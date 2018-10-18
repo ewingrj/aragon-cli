@@ -13,7 +13,7 @@ module.exports = async function (dao, getTransactionPath, { reporter, apm, netwo
       task: async (ctx, task) => {
         task.output = `Fetching DAO at ${dao}...`
 
-        if (!ctx.accounts) {
+        if (!ctx.accounts) {
           ctx.accounts = await web3.eth.getAccounts()
         }
 

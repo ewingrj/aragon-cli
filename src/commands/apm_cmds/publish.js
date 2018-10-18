@@ -21,6 +21,7 @@ const deploy = require('../deploy')
 const startIPFS = require('../ipfs')
 const getRepoTask = require('../dao_cmds/utils/getRepoTask')
 
+const DEFAULT_GAS_PRICE = require('../../../package.json').aragon.defaultGasPrice
 const MANIFEST_FILE = 'manifest.json'
 const ARTIFACT_FILE = 'artifact.json'
 
@@ -206,7 +207,7 @@ exports.task = function ({
   if (onlyContent) {
     contract = '0x0000000000000000000000000000000000000000'
   }
-  
+
   apmOptions.ensRegistryAddress = apmOptions['ens-registry']
   const apm = APM(web3, apmOptions)
   return new TaskList([
@@ -271,7 +272,7 @@ exports.task = function ({
       title: 'Deploy contract',
       task: async (ctx) => {
         const deployTaskParams = { contract, init, reporter, network, cwd, web3, apmOptions }
-        
+
         return await deploy.task(deployTaskParams)
       },
       enabled: ctx => !onlyContent && ((contract && !web3Utils.isAddress(contract)) || (!contract && ctx.isMajor && !reuse) || automaticallyBump)
@@ -287,7 +288,7 @@ exports.task = function ({
           ctx.version = '1.0.0'
           return task.skip('Starting from initial version')
         }
-        
+
         ctx.version = `${nextMajorVersion}.0.0`
       },
       enabled: () => automaticallyBump
@@ -365,7 +366,7 @@ exports.task = function ({
           const { path: tmpDir } = await tmp.dir()
           publishDir = tmpDir
         }
-        
+
         await prepareFilesForPublishing(publishDir, files, ignore)
         ctx.pathToPublish = publishDir
 
@@ -439,14 +440,14 @@ exports.task = function ({
           )
 
           transaction.from = from
-          transaction.gasPrice = '19000000000' // 19 gwei
+          transaction.gasPrice = network.gasPrice || DEFAULT_GAS_PRICE
 
           reporter.debug(JSON.stringify(transaction))
-          
+
           return await web3.eth.sendTransaction(transaction)
         } catch (e) {
           throw e
-        } 
+        }
       },
       enabled: () => !onlyArtifacts
     },

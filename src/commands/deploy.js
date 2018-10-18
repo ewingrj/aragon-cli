@@ -5,6 +5,7 @@ const chalk = require('chalk')
 const { compileContracts } = require('../helpers/truffle-runner')
 const { findProjectRoot } = require('../util')
 const { ensureWeb3 } = require('../helpers/web3-fallback')
+const DEFAULT_GAS_PRICE = require('../../package.json').aragon.defaultGasPrice
 
 exports.command = 'deploy [contract]'
 
@@ -28,6 +29,7 @@ exports.builder = yargs => {
 }
 
 exports.task = async ({ reporter, network, cwd, contract, init, web3, apmOptions }) => {
+
 	if (!contract) {
 		contract = exports.arappContract()
 	}
@@ -41,7 +43,7 @@ exports.task = async ({ reporter, network, cwd, contract, init, web3, apmOptions
 
 	// Mappings allow to pass certain init parameters that get replaced for their actual value
 	const mappingMask = key => `@ARAGON_${key}`
-	const mappings = { 
+	const mappings = {
 		[mappingMask('ENS')]: () => apmOptions.ensRegistryAddress // <ens> to ens addr
 	}
 	const processedInit = init.map(value => mappings[value] ? mappings[value]() : value)
@@ -69,16 +71,21 @@ exports.task = async ({ reporter, network, cwd, contract, init, web3, apmOptions
 
 				if (!bytecode || bytecode == '0x') {
 					throw new Error('Contract bytecode couldnt be generated. Contracts that dont implement all interface methods cant be deployed')
-				} 
+				}
 
 				task.output = `Deploying '${contractName}' to network`
 
 				const contract = new web3.eth.Contract(abi, { data: bytecode })
 				const accounts = await web3.eth.getAccounts()
 				const deployTx = contract.deploy({ arguments: processedInit })
-				const gas = await deployTx.estimateGas() 
 
-				const instance = await deployTx.send({ from: accounts[0], gas, gasPrice: '19000000000' }) // 19 gwei
+				const args = {
+					from: accounts[0],
+					gasPrice: network.gasPrice || DEFAULT_GAS_PRICE,
+					gas: await deployTx.estimateGas()
+				}
+
+				const instance = await deployTx.send(args)
 
 				if (!instance.options.address) {
 					throw new Error("Contract deployment failed")
